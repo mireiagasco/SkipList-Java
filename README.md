@@ -1,2 +1,2 @@
 # SkipList-Java
-Implementation of a Skip List using Java
+SkipList implementation with java, generics and iterators.
