@@ -95,7 +95,7 @@ public class SkipList<T> implements Iterable{
         return current;
     }
 
-    private int getNumElem() {
+    public int size() {
         return numElem;
     }
 

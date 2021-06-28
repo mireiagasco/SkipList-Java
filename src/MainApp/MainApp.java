@@ -26,6 +26,7 @@ public class MainApp {
         System.out.println("Done.  List generated: ");
 
         System.out.println(skipList);
+        System.out.println("Length of the list: " + skipList.size());
 
         System.out.println("\n>>>Inserting numbers from 0 to 5 to the list...");
         for (int i = 0; i < 6; i++){
