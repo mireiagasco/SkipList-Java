@@ -1,7 +1,6 @@
 package MainApp;
 
 import Exceptions.ElementNotFound;
-import Exceptions.InsertionError;
 import SkipList.SkipList;
 
 import java.util.Random;
@@ -19,7 +18,7 @@ public class MainApp {
             try {
                 skipList.insert(random.nextInt(50));
             }
-            catch (InsertionError | ElementNotFound e){
+            catch (ElementNotFound e){
                 System.out.println(e);
             }
         }
@@ -34,7 +33,7 @@ public class MainApp {
             try {
                 skipList.insert(i);
             }
-            catch (InsertionError | ElementNotFound e){
+            catch (ElementNotFound e){
                 System.out.println(e);
             }
         }

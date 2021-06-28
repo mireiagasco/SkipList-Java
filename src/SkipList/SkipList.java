@@ -1,6 +1,5 @@
 package SkipList;
 
-import Exceptions.InsertionError;
 import Exceptions.ElementNotFound;
 
 import java.util.Iterator;
@@ -30,16 +29,16 @@ public class SkipList<T> implements Iterable{
         //Attributes
 
         private T info;         //node data
-        private Node superior;  //reference to the node above
-        private Node inferior;  //reference to the node below
+        private Node above;     //reference to the node above
+        private Node below;     //reference to the node below
         private Node next;      //reference to the node on the right
         private Node previous;  //reference to the node on the left
 
         //Constructor
         public Node(T info){
             this.info = info;
-            this.superior = null;
-            this.inferior = null;
+            this.above = null;
+            this.below = null;
             this.next = null;
             this.previous = null;
         }
@@ -49,12 +48,12 @@ public class SkipList<T> implements Iterable{
             return info;
         }
 
-        public Node getSuperior() {
-            return superior;
+        public Node getAbove() {
+            return above;
         }
 
-        public Node getInferior() {
-            return inferior;
+        public Node getBelow() {
+            return below;
         }
 
         public Node getNext() {
@@ -115,9 +114,8 @@ public class SkipList<T> implements Iterable{
     /**
      * Insertion method.  Adds the new element to its position.
      * @param info element to be added to the list.
-     * @throws InsertionError in case the insertion fails.
      */
-    public <T extends Comparable> void insert(T info) throws InsertionError, ElementNotFound {
+    public <T extends Comparable> void insert(T info) throws ElementNotFound {
 
         Node position = lookFor(info);    //position in which the element must be placed
 
@@ -145,12 +143,12 @@ public class SkipList<T> implements Iterable{
         Node newTail = new Node(null);  //tail of the new level and new tail of the list
 
         //update all references
-        head.superior = newHead;
-        tail.superior = newTail;
+        head.above = newHead;
+        tail.above = newTail;
         newHead.next = newTail;
         newTail.previous = newHead;
-        newHead.inferior = head;
-        newTail.inferior = tail;
+        newHead.below = head;
+        newTail.below = tail;
 
         //update head and tail positions
         head = newHead;
@@ -172,10 +170,10 @@ public class SkipList<T> implements Iterable{
 
         //get n
         for (int i = 0; i < level; i++){
-            while (n != null && n.getSuperior() == null){
+            while (n != null && n.getAbove() == null){
                 n = n.previous;
             }
-            if (n != null) n = n.getSuperior();
+            if (n != null) n = n.getAbove();
         }
 
         //create the new node
@@ -189,8 +187,8 @@ public class SkipList<T> implements Iterable{
 
         //if we are not in the base level
         if (nodeBelow != null){
-            nodeBelow.superior = newNode;
-            newNode.inferior = nodeBelow;
+            nodeBelow.above = newNode;
+            newNode.below = nodeBelow;
         }
 
         return newNode;
@@ -230,8 +228,8 @@ public class SkipList<T> implements Iterable{
             while (position.next.info != null && position.next.info.compareTo(data) < 0){  //while we don't get passed the element
                 position = position.next;
             }
-            if (position.getInferior() != null){  //go to the level below if it is possible
-                position = position.getInferior();
+            if (position.getBelow() != null){  //go to the level below if it is possible
+                position = position.getBelow();
             }
             else found = true; //if we cannot go right nor below, we have finished our search
         }
@@ -262,7 +260,7 @@ public class SkipList<T> implements Iterable{
                 start = start.next;
             }
 
-            higherLevel = higherLevel.inferior;
+            higherLevel = higherLevel.below;
             start = higherLevel;
             level--;
         }
@@ -298,20 +296,20 @@ public class SkipList<T> implements Iterable{
             //eliminem les referències al node
             nodeToBeDeleted.previous.next = nodeToBeDeleted.next;
             nodeToBeDeleted.next.previous = nodeToBeDeleted.next;
-            nodeToBeDeleted.inferior = null;
-            nodeToBeDeleted = nodeToBeDeleted.superior;
+            nodeToBeDeleted.below = null;
+            nodeToBeDeleted = nodeToBeDeleted.above;
 
             if (nodeToBeDeleted != null){
-                nodeToBeDeleted.inferior.superior = null;
+                nodeToBeDeleted.below.above = null;
             }
         }
 
         //if the top level is empty, delete it
-        if (head.next == tail && head.getInferior() != null){
-            head = head.inferior;
-            head.superior = null;
-            tail = tail.inferior;
-            tail.superior = null;
+        if (head.next == tail && head.getBelow() != null){
+            head = head.below;
+            head.above = null;
+            tail = tail.below;
+            tail.above = null;
 
             listHeight--;
         }
