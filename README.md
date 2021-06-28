@@ -3,3 +3,4 @@ The SkipList is an alternative implementation of an ordered LinkedList that aims
 
 ![alt text](https://github.com/mireiagasco/SkipList-Java/blob/main/SkipList.png)
 
+
