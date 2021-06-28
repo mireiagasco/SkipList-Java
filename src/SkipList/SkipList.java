@@ -66,7 +66,7 @@ public class SkipList<T> implements Iterable{
         }
     }
 
-    //Atributs
+    //Attributes
     private Node head;      //top left element of the list
     private Node tail;      //top right element of the list
     private int numElem;    //length of the list
