@@ -1,297 +1,319 @@
 package SkipList;
 
-
-import excepcions.ErrorEsborrar;
-import excepcions.ErrorInserir;
-import excepcions.NoTrobat;
-import interfícies.Llista;
+import Exceptions.InsertionError;
+import Exceptions.ElementNotFound;
 
 import java.util.Iterator;
 import java.util.Random;
 
 /**
- * Classe que implementa una Skiplist
- * @param <T> tipus de dades que desarà la skiplist
+ * Skip-List Implementation with generics
+ * @author Mireia Gasco Agorreta
+ * @version 2.0
+ *
+ * @param <T> type of objects that will be stored
  */
-public class SkipList<T> implements Llista, Iterable{
+public class SkipList<T> implements Iterable{
 
     @Override
     public Iterator iterator() {
-        return new IteradorSkipList(this);
+        return new SkipListIterator(this);
     }
 
+
     /**
-     * Classe que guarda un enter i un node (per retornar el nombre d'accessos i el node trobat en la cerca)
+     * Class for the SkipList nodes
+     * @param <T> type of objects (must be comparable)
      */
-    private static class EnterNode<T extends Comparable>{
-        private int enter;
-        private Node node;
+    public class Node<T extends Comparable>{
+
+        //Attributes
+
+        private T info;         //node data
+        private Node superior;  //reference to the node above
+        private Node inferior;  //reference to the node below
+        private Node next;      //reference to the node on the right
+        private Node previous;  //reference to the node on the left
 
         //Constructor
-        public EnterNode(int enter, Node node){
-            this.enter = enter;
-            this.node = node;
+        public Node(T info){
+            this.info = info;
+            this.superior = null;
+            this.inferior = null;
+            this.next = null;
+            this.previous = null;
+        }
+
+        //Getters
+        public T getInfo() {
+            return info;
+        }
+
+        public Node getSuperior() {
+            return superior;
+        }
+
+        public Node getInferior() {
+            return inferior;
+        }
+
+        public Node getNext() {
+            return next;
+        }
+
+        public Node getPrevious() {
+            return previous;
         }
     }
 
     //Atributs
-    private Node cap;   //extrem superior esquerre de la llista
-    private Node cua;   //extrem superior dret de la llista
-    private int numElem;    //llargada de la llista
+    private Node head;      //top left element of the list
+    private Node tail;      //top right element of the list
+    private int numElem;    //length of the list
+    private int listHeight; //height of the list
 
-    private int alcadaLlista;   //alçada de la llista
-    public Random random = new Random();
+    private Random random = new Random();    //random generator to toss the coin
 
-    private Node primer;    //primer node de la planta baixa
-    private Node actual;    //punter que ens marca la posició de la llista en la que ens trobem (per iterar)
+    private Node first;    //first node of the bottom list
+    private Node current;  //reference to the current node (when iterating)
 
     //Constructor
     public SkipList(){
-        Crear();
+        head = new Node(null);
+        tail = new Node(null);
+        current = head;
+        first = current;
+        head.next = tail;
+        tail.previous = head;
+        numElem = 0;
+        listHeight = 0;
     }
 
     //Getters
 
-    public Node getCap() {
-        return cap;
+    public Node getCurrent() {
+        return current;
     }
 
-    public Node getPrimer() {
-        return primer;
+    private int getNumElem() {
+        return numElem;
     }
 
-    public Node getActual() {
-        return actual;
-    }
+    //Methods
 
-    //Mètodes
-
-    public Node seguent(){
-        if (actual.getSeguent().getInfo() != null){
-            actual = actual.getSeguent();
-            return actual;
+    public Node next(){
+        if (current.next.info != null){
+            current = current.next;
+            return current;
         }
         else {
-            actual = primer;
+            current = first;
             return null;
         }
     }
 
-    @Override
-    public void Crear() {
-        cap = new Node(null);
-        cua = new Node(null);
-        actual = cap;
-        primer = actual;
-        cap.setSeguent(cua);
-        cua.setPrevi(cap);
-        numElem = 0;
-        alcadaLlista = 0;
-    }
+    /**
+     * Insertion method.  Adds the new element to its position.
+     * @param info element to be added to the list.
+     * @throws InsertionError in case the insertion fails.
+     */
+    public <T extends Comparable> void insert(T info) throws InsertionError, ElementNotFound {
 
-    @Override
-    public <T extends Comparable> void Inserir(T info) throws ErrorInserir {
-        EnterNode aux = cerca(info); //obtenim la posició prèvia a la que ha d'ocupar l'element
-        Node posicio = aux.node;     //obtenim la posició prèvia a la que ha d'ocupar l'element
-        int maxNivells = (int)(Math.log(numElem+1)/Math.log(2));   //obtenim el màxim de nivells que pot tenir la nostra llista segons la seva llargada
-        int nivell = 0; //nivell en el que toca col·locar l'element
-        Node nodeInferior = null; //node inferior al que volem col·locar
+        Node position = lookFor(info);    //position in which the element must be placed
+
+        int maxLevel = (int)(Math.log(numElem+1)/Math.log(2));   //maximum number of levels that the list can have according to its length
+
+        int level = 0;                                           //level in which the element must be positioned
+        Node nodeBelow = null;                                //node above which the element must be positioned
 
         do {
-            //comprovem que el nivell en el que volem afegir el node existeix
-            if (alcadaLlista < nivell){
-                crearNivellBuit();  //si no existeix, el creem
+            if (listHeight < level){
+                addEmptyLevel();  //create a level in case it doesn't exist
             }
-            nodeInferior = colocarElement(info, posicio, nivell, nodeInferior); //col·loquem el node en la posició que toca
-            nivell++;   //pugem un nivell
-        } while (alcadaLlista < maxNivells && random.nextBoolean());    //mentre no ens passem del màxim de nivells i el booleà aleatori sigui cert
+            nodeBelow = placeElement(info, position, level, nodeBelow); //col·loquem el node en la posició que toca
+            level++;    //go to the next level
+        } while (listHeight < maxLevel && random.nextBoolean());    //toss the coin while we can still increase the level
 
         numElem++;
     }
 
     /**
-     * Mètode que afegeix un nivell buit a la llista
+     * Method that adds a new empty level to the skiplist
      */
-    private void crearNivellBuit(){
-        Node nouCap = new Node(null);   //cap del nou nivell i nou cap de la llista
-        Node novaCua = new Node(null);  //cua del nou nivell i nova cua de la llista
+    private void addEmptyLevel(){
+        Node newHead = new Node(null);   //head of the new level and new head of the list
+        Node newTail = new Node(null);  //tail of the new level and new tail of the list
 
-        //actualitzem tots els punters
-        cap.setSuperior(nouCap);
-        cua.setSuperior(novaCua);
-        nouCap.setSeguent(novaCua);
-        novaCua.setPrevi(nouCap);
-        nouCap.setInferior(cap);
-        novaCua.setInferior(cua);
+        //update all references
+        head.superior = newHead;
+        tail.superior = newTail;
+        newHead.next = newTail;
+        newTail.previous = newHead;
+        newHead.inferior = head;
+        newTail.inferior = tail;
 
-        //actualitzem la posició del cap i la cua
-        cap = nouCap;
-        cua = novaCua;
+        //update head and tail positions
+        head = newHead;
+        tail = newTail;
 
-        alcadaLlista++;
+        listHeight++;
     }
 
     /**
-     * Mètode que col·loca un nou element a la llista en la posició indicada
-     * @param info informació que ha de contenir el nou element
-     * @param posicio posició prèvia a la que li correspon al nou element
-     * @param nivell nivell de la llista on es vol col·locar el nou element
-     * @param nodeInferior node inferior al que es vol col·locar (en el nivell zero serà null)
-     * @param <T> tipus de la informació que contindrà el node
-     * @return retorna el nou node
+     * Method that places the element in its position
+     * @param info data of the new element
+     * @param position previous node to the position in which the new node must be placed
+     * @param level level of the list in which the element must be placed
+     * @param nodeBelow node above which the element must be placed
+     * @return the new node
      */
-    private <T extends Comparable> Node colocarElement(T info, Node posicio, int nivell, Node nodeInferior){
-        Node n = posicio;   //n ens indica el node previ en el nivell que toqui
+    private <T extends Comparable> Node placeElement(T info, Node position, int level, Node nodeBelow){
+        Node n = position;   //n wil indicate the previous node to the position in which the element must be placed
 
-        //ens col·loquem en el node previ del nivell que toqui
-        for (int i = 0; i < nivell; i++){
+        //get n
+        for (int i = 0; i < level; i++){
             while (n != null && n.getSuperior() == null){
-                n = n.getPrevi();
+                n = n.previous;
             }
             if (n != null) n = n.getSuperior();
         }
 
-        //creem el nou node
-        Node nouNode = new Node(info);
+        //create the new node
+        Node newNode = new Node(info);
 
-        //col·loquem els punters
-        nouNode.setPrevi(n);
-        nouNode.setSeguent(n.getSeguent());
-        n.getSeguent().setPrevi(nouNode);
-        n.setSeguent(nouNode);
+        //position the references
+        newNode.previous = n;
+        newNode.next = n.next;
+        n.next.previous = newNode;
+        n.next = newNode;
 
-        //si estem en un nivell que no sigui el zero
-        if (nodeInferior != null){
-            nodeInferior.setSuperior(nouNode);
-            nouNode.setInferior(nodeInferior);
+        //if we are not in the base level
+        if (nodeBelow != null){
+            nodeBelow.superior = newNode;
+            newNode.inferior = nodeBelow;
         }
 
-        return nouNode;
-    }
-
-
-    @Override
-    public int Longitud() {
-        return numElem;
-    }
-
-    @Override
-    public <T extends Comparable> int Buscar(T info) throws NoTrobat{
-
-        EnterNode aux = cerca(info);    //la cerca retorna un enter (nombre d'accessos) i un node (node trobat)
-
-        if (aux.node.getSeguent() != null && aux.node.getSeguent().getInfo() != null &&aux.node.getSeguent().getInfo().compareTo(info) != 0){    //si el node trobat no és el que buscàvem, vol dir que no existeix
-            throw new NoTrobat(aux.enter);
-        }
-
-        return aux.enter;
-    }
-
-
-    /**
-     * Mètode que busca un element a la llista
-     * @param data informació que es vol cercar
-     * @param <T> tipus de la informació que es vol cercar
-     * @return retorna un objecte EnterNode amb el node previ al que es buscava i el nombre d'accessos que han fet falta per trobar-lo
-     */
-    public <T extends Comparable> EnterNode cerca(T data) {
-        Node posicio = cap;
-        boolean trobat = false;
-        int numAccessos = 0;
-
-        while (!trobat){
-            while (posicio.getSeguent().getInfo() != null && posicio.getSeguent().getInfo().compareTo(data) < 0){  //mentre la posició següent tingui un valor més petit que el que busquem
-                posicio = posicio.getSeguent();
-                numAccessos++;
-            }
-            if (posicio.getInferior() != null){  //si no podem avançar més, baixem un nivell
-                posicio = posicio.getInferior();
-                numAccessos++;
-            }
-            else trobat = true; //si no podem avançar ni baixar, hem acabat la cerca
-        }
-
-        EnterNode aux = new EnterNode(numAccessos, posicio);
-        return aux;
+        return newNode;
     }
 
     /**
-     * toString de la classe Skiplist
+     * Search method.
+     * @param data data to be searched
+     * @return true if the element is in the list, false if it is not.
+     * @throws ElementNotFound if the element is not found
      */
+    public <T extends Comparable> boolean search(T data){
+
+        boolean found = false;
+
+        Node position = lookFor(data);    //la cerca retorna un enter (nombre d'accessos) i un node (node trobat)
+
+        if ((position.next != null) && (position.next.info != null)){    //if the position found is not the node we were looking for
+            if (position.next.info.compareTo(data) == 0){
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    /**
+     * Method that looks for an element on the list.
+     * @param data element to be searched for
+     * @return the object found
+     */
+    private <T extends Comparable> Node lookFor(T data){
+        Node position = head;
+        boolean found = false;
+
+        while (!found){
+            while (position.next.info != null && position.next.info.compareTo(data) < 0){  //while we don't get passed the element
+                position = position.next;
+            }
+            if (position.getInferior() != null){  //go to the level below if it is possible
+                position = position.getInferior();
+            }
+            else found = true; //if we cannot go right nor below, we have finished our search
+        }
+
+        return position;
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("\nSkiplist:");
 
-        Node inici = cap;
+        Node start = head;
 
-        Node nivellMesAlt = inici;
-        int nivell = alcadaLlista;
+        Node higherLevel = start;
+        int level = listHeight;
 
-        while (nivellMesAlt != null) {
-            sb.append("\n\nNivell: " + nivell + "\n");
+        while (higherLevel != null) {
+            sb.append("\n\nLevel: " + level + "\n");
 
-            while (inici != null) {
-                sb.append(inici.getInfo());
+            while (start != null) {
+                sb.append(start.info);
 
-                if (inici.getSeguent() != null) {
+                if (start.next != null) {
                     sb.append(" : ");
                 }
 
-                inici = inici.getSeguent();
+                start = start.next;
             }
 
-            nivellMesAlt = nivellMesAlt.getInferior();
-            inici = nivellMesAlt;
-            nivell--;
+            higherLevel = higherLevel.inferior;
+            start = higherLevel;
+            level--;
         }
 
         return sb.toString();
     }
 
     /**
-     * Mètode que esborra l'element demanat (si el troba)
-     * @param info dada que es vol eliminar
+     * Delete method.  Deletes the element indicated if it is on the list.
+     * @param info data to be deleted.
+     * @throws ElementNotFound if the element is not in the list.
      */
-    public <T extends Comparable>void Esborrar(T info) throws ErrorEsborrar{
-        //busquem el node en la llista
-        EnterNode aux = cerca(info);
+    public <T extends Comparable>void delete(T info) throws ElementNotFound{
 
-        //si el node es troba en la llista
-        if (aux.node.getSeguent() != null && aux.node.getSeguent().getInfo() != null && aux.node.getSeguent().getInfo().compareTo(info) == 0){
-            eliminarNode(aux.node.getSeguent());
+        if (search(info)){
+            Node aux = lookFor(info); //position of the element
+            deleteNode(aux.next);
             numElem--;
         }
-        else throw new ErrorEsborrar("L'element " + info + " no es troba en la llista i no s'ha pogut eliminar");
+        else throw new ElementNotFound();
+
     }
 
     /**
-     * Mètode que elimina un node de la llista
-     * @param nodeAEliminar referència al node que es vol eliminar
+     * Method that deletes the node in the specified position
+     * @param nodeToBeDeleted node to be deleted
      */
-    private void eliminarNode(Node nodeAEliminar){
+    private void deleteNode(Node nodeToBeDeleted){
 
-        //eliminem el node
-        while (nodeAEliminar != null){
+        //delete all the node in all levels
+        while (nodeToBeDeleted != null){
 
             //eliminem les referències al node
-            nodeAEliminar.getPrevi().setSeguent(nodeAEliminar.getSeguent());
-            nodeAEliminar.getSeguent().setPrevi(nodeAEliminar.getPrevi());
-            nodeAEliminar.setInferior(null);
-            nodeAEliminar = nodeAEliminar.getSuperior();
+            nodeToBeDeleted.previous.next = nodeToBeDeleted.next;
+            nodeToBeDeleted.next.previous = nodeToBeDeleted.next;
+            nodeToBeDeleted.inferior = null;
+            nodeToBeDeleted = nodeToBeDeleted.superior;
 
-            if (nodeAEliminar != null){
-                nodeAEliminar.getInferior().setSuperior(null);
+            if (nodeToBeDeleted != null){
+                nodeToBeDeleted.inferior.superior = null;
             }
         }
 
-        //comprovem si el nivell s'ha quedat buit
-        if (cap.getSeguent() == cua && cap.getInferior() != null){
-            cap = cap.getInferior();
-            cap.setSuperior(null);
-            cua = cua.getInferior();
-            cua.setSuperior(null);
+        //if the top level is empty, delete it
+        if (head.next == tail && head.getInferior() != null){
+            head = head.inferior;
+            head.superior = null;
+            tail = tail.inferior;
+            tail.superior = null;
 
-            alcadaLlista--;
+            listHeight--;
         }
     }
 }
